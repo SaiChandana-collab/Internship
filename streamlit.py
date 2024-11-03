@@ -181,7 +181,7 @@ def main():
         with col1:
             st.image(denoised_image_1, caption='Anisotropic Diffusion', use_column_width=True, clamp=True, channels="GRAY", width=denoised_width)
             if st.button('Anisotropic OCR'):
-                denoised_image=Image.fromarray(denoised_image)
+                denoised_image=Image.fromarray(denoised_image_1)
                 with io.BytesIO() as buffer:
                    denoised_image.save(buffer, format='PNG')  # Save as PNG or JPG
                    image_bytes = buffer.getvalue()
