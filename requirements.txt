@@ -1,6 +1,5 @@
 streamlit
 cv2
 numpy
-PIL
 sklearn
 pytesseract
