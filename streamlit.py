@@ -9,13 +9,6 @@ Original file is located at
 
 
 
-!pip install streamlit
-
-!pip install pytesseract
-!sudo apt install tesseract-ocr
-!tesseract -v
-!which tesseract
-
 import streamlit as st
 from PIL import Image
 import pytesseract
@@ -183,7 +176,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-! pip install streamlit -q
-!wget -q -O - ipv4.icanhazip.com
-! streamlit run streamlit.py & npx localtunnel --port 8501
 
