@@ -189,8 +189,6 @@ def main():
                 extracted_text = extract_text(image_bytes)
                 st.subheader("Extracted Text:")
                 st.write(extracted_text)
-                extracted_text = extract_text_from_image(denoised_image_1)
-                st.text_area('Extracted Text', extracted_text, height=500)
 
         with col2:
             st.image(denoised_image_2, caption='PCA ', use_column_width=True, clamp=True, channels="GRAY", width=denoised_width)
