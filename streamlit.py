@@ -8,6 +8,10 @@ Original file is located at
 """
 
 
+aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+aws_region = os.getenv('AWS_DEFAULT_REGION')
+
 
 import streamlit as st
 from PIL import Image
@@ -15,6 +19,8 @@ import pytesseract
 import numpy as np
 from sklearn.decomposition import PCA
 import cv2
+import boto3
+import io
 
 
 background_color = "#F0F2F5"
@@ -26,7 +32,24 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-
+def extract_text(image_bytes):
+    # Create a Textract client
+    client = boto3.client('textract', 
+                           aws_access_key_id=aws_access_key_id,
+                           aws_secret_access_key=aws_secret_access_key,
+                           region_name=aws_region)
+    
+    # Call Textract
+    response = client.detect_document_text(Document={'Bytes': image_bytes})
+    
+    # Extract text from the response
+    text = ''
+    for item in response['Blocks']:
+        if item['BlockType'] == 'LINE':
+            text += item['Text'] + '\n'
+    
+    return text
+    
 def denoise_approach_3(image):
 
     # Apply Bilateral Filtering
@@ -158,6 +181,13 @@ def main():
         with col1:
             st.image(denoised_image_1, caption='Anisotropic Diffusion', use_column_width=True, clamp=True, channels="GRAY", width=denoised_width)
             if st.button('Anisotropic OCR'):
+                image_bytes = denoised_image1.read()
+                st.image(denoised_image1, caption='Uploaded Image', use_column_width=True)
+
+# Extract text from image
+                extracted_text = extract_text(image_bytes)
+                st.subheader("Extracted Text:")
+                st.write(extracted_text)
                 extracted_text = extract_text_from_image(denoised_image_1)
                 st.text_area('Extracted Text', extracted_text, height=500)
 
