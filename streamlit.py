@@ -181,9 +181,10 @@ def main():
         with col1:
             st.image(denoised_image_1, caption='Anisotropic Diffusion', use_column_width=True, clamp=True, channels="GRAY", width=denoised_width)
             if st.button('Anisotropic OCR'):
-                image_bytes = denoised_image_1.read()
-                st.image(denoised_image_1, caption='Uploaded Image', use_column_width=True)
-
+                
+                with io.BytesIO() as buffer:
+                   denoised_image_1.save(buffer, format='PNG')  # Save as PNG or JPG
+                   image_bytes = buffer.getvalue()
 # Extract text from image
                 extracted_text = extract_text(image_bytes)
                 st.subheader("Extracted Text:")
