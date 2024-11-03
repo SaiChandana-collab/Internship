@@ -193,14 +193,27 @@ def main():
         with col2:
             st.image(denoised_image_2, caption='PCA ', use_column_width=True, clamp=True, channels="GRAY", width=denoised_width)
             if st.button('PCA OCR'):
-                extracted_text = extract_text_from_image(denoised_image_2)
-                st.text_area('Extracted Text', extracted_text, height=500)
+                denoised_image=Image.fromarray(denoised_image_2)
+                with io.BytesIO() as buffer:
+                   denoised_image.save(buffer, format='PNG')  # Save as PNG or JPG
+                   image_bytes = buffer.getvalue()
+# Extract text from image
+                extracted_text = extract_text(image_bytes)
+                st.subheader("Extracted Text:")
+                st.write(extracted_text)
+                
 
         with col3:
             st.image(denoised_image_3, caption='Bilateral Filtering', use_column_width=True, clamp=True, channels="GRAY", width=denoised_width)
             if st.button('Bilateral Filtering OCR'):
-                extracted_text = extract_text_from_image(denoised_image_3)
-                st.text_area('Extracted Text', extracted_text, height=500)
+                denoised_image=Image.fromarray(denoised_image_3)
+                with io.BytesIO() as buffer:
+                   denoised_image.save(buffer, format='PNG')  # Save as PNG or JPG
+                   image_bytes = buffer.getvalue()
+# Extract text from image
+                extracted_text = extract_text(image_bytes)
+                st.subheader("Extracted Text:")
+                st.write(extracted_text)
 # Run the app
 if __name__ == '__main__':
     main()
