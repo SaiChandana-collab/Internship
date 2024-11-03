@@ -21,6 +21,7 @@ from sklearn.decomposition import PCA
 import cv2
 import boto3
 import io
+import os
 
 
 background_color = "#F0F2F5"
