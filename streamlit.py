@@ -13,7 +13,7 @@ aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 aws_region = os.getenv('AWS_DEFAULT_REGION')
 
 
-import streamlit as st
+"""import streamlit as st
 from PIL import Image
 import pytesseract
 import numpy as np
@@ -216,6 +216,136 @@ def main():
                 st.write(extracted_text)
 # Run the app
 if __name__ == '__main__':
+    main()"""
+
+
+import streamlit as st
+from PIL import Image
+import pytesseract
+import numpy as np
+from sklearn.decomposition import PCA
+import cv2
+
+
+background_color = "#F0F2F5"
+st.markdown(f"""
+<style>
+    body {{
+        background-color: {background_color};
+    }}
+</style>
+""", unsafe_allow_html=True)
+
+
+# Define denoising functions
+def denoise_approach_3(image):
+    image = cv2.fastNlMeansDenoising(image, None, h=10, templateWindowSize=7, searchWindowSize=41)
+    denoised_image = cv2.bilateralFilter(image, d=15, sigmaColor=75, sigmaSpace=75)
+    denoised_image = cv2.adaptiveThreshold(denoised_image.astype(np.uint8), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 19)
+    return denoised_image
+
+
+def pca_denoising(image, variance_retained=0.95):
+    image_float32 = np.float32(image)
+    X = image_float32.flatten()
+    pca = PCA(n_components=variance_retained)
+    pca.fit(X.reshape(-1, 1))
+    projected_image = pca.transform(X.reshape(-1, 1))
+    reconstructed_image = pca.inverse_transform(projected_image).reshape(image.shape)
+    denoised_image = np.uint8(np.clip(reconstructed_image, 0, 255))
+    return denoised_image
+
+
+def denoise_approach_2(image):
+    blurred_image = cv2.GaussianBlur(image, (1, 1), 0)
+    blurred_image = cv2.fastNlMeansDenoising(blurred_image, None, 10, 17, 60)
+    variance_retained = 0.15
+    pca_denoised_image = pca_denoising(blurred_image, variance_retained)
+    final_denoised_image = cv2.adaptiveThreshold(pca_denoised_image.astype(np.uint8), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 17)
+    return final_denoised_image
+
+
+def denoise_approach_1(image):
+    scale_factor = 2
+    org_image = cv2.resize(image, (0, 0), fx=scale_factor, fy=scale_factor)
+    if len(org_image.shape) == 3 and org_image.shape[2] == 3:
+        org_image = cv2.cvtColor(org_image, cv2.COLOR_RGB2GRAY)
+    image = cv2.fastNlMeansDenoising(org_image, None, h=10, templateWindowSize=15, searchWindowSize=71)
+    denoised_image = anisotropic_diffusion(image, iterations=30, kappa=20, gamma=0.2, option=1)
+    denoised_image = cv2.adaptiveThreshold(denoised_image.astype(np.uint8), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 29)
+    return denoised_image
+
+
+def anisotropic_diffusion(image, iterations, kappa, gamma, option):
+    image = image.astype('float32')
+    if option == 1:
+        image = cv2.GaussianBlur(image, (1, 1), 0)
+    elif option == 2:
+        image = cv2.medianBlur(image.astype(np.uint8), 3)
+    image_padded = np.pad(image, ((1, 1), (1, 1)), mode='constant')
+
+    for i in range(iterations):
+        nablaN = image_padded[:-2, 1:-1] - image_padded[1:-1, 1:-1]
+        nablaS = image_padded[2:, 1:-1] - image_padded[1:-1, 1:-1]
+        nablaW = image_padded[1:-1, :-2] - image_padded[1:-1, 1:-1]
+        nablaE = image_padded[1:-1, 2:] - image_padded[1:-1, 1:-1]
+
+        cN = np.exp(-(nablaN / kappa) ** 2)
+        cS = np.exp(-(nablaS / kappa) ** 2)
+        cW = np.exp(-(nablaW / kappa) ** 2)
+        cE = np.exp(-(nablaE / kappa) ** 2)
+
+        image_update = image_padded[1:-1, 1:-1] + gamma * (
+            cN * nablaN + cS * nablaS + cW * nablaW + cE * nablaE
+        )
+        image_padded[1:-1, 1:-1] = image_update
+
+    return image_padded[1:-1, 1:-1]
+
+
+def extract_text_from_image(image):
+    return pytesseract.image_to_string(image, lang='eng', config=r'--oem 3 --psm 6')
+
+
+# Main function to run the Streamlit app
+def main():
+    st.title("Image Denoising App")
+    st.write("Upload your noisy image and explore different denoising methods.")
+
+    # Navbar for selecting denoising method
+    navbar = st.sidebar.radio(
+        "Navigation",
+        ("Anisotropic Diffusion", "PCA Denoising", "Bilateral Filtering")
+    )
+
+    # Upload image
+    uploaded_image = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg", "tif"])
+
+    if uploaded_image is not None:
+        image = Image.open(uploaded_image)
+        image_np = np.array(image)
+        st.image(image, caption='Uploaded Image', use_column_width=True)
+
+        # Display selected denoising method
+        if navbar == "Anisotropic Diffusion":
+            st.header("Anisotropic Diffusion")
+            denoised_image = denoise_approach_1(image_np)
+        elif navbar == "PCA Denoising":
+            st.header("PCA Denoising")
+            denoised_image = denoise_approach_2(image_np)
+        elif navbar == "Bilateral Filtering":
+            st.header("Bilateral Filtering")
+            denoised_image = denoise_approach_3(image_np)
+
+        st.image(denoised_image, caption=f"Denoised Image ({navbar})", use_column_width=True, clamp=True, channels="GRAY")
+
+        if st.button(f"Extract Text ({navbar})"):
+            extracted_text = extract_text_from_image(denoised_image)
+            st.text_area("Extracted Text", extracted_text, height=200)
+
+
+if __name__ == '__main__':
     main()
+
 
 
