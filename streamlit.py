@@ -295,8 +295,23 @@ def anisotropic_diffusion(image, iterations, kappa, gamma, option):
     return image_padded[1:-1, 1:-1]
 
 
-def extract_text_from_image(image):
-    return pytesseract.image_to_string(image, lang='eng', config=r'--oem 3 --psm 6')
+def extract_text(image_bytes):
+    # Create a Textract client
+    client = boto3.client('textract', 
+                           aws_access_key_id=aws_access_key_id,
+                           aws_secret_access_key=aws_secret_access_key,
+                           region_name=aws_region)
+    
+    # Call Textract
+    response = client.detect_document_text(Document={'Bytes': image_bytes})
+    
+    # Extract text from the response
+    text = ''
+    for item in response['Blocks']:
+        if item['BlockType'] == 'LINE':
+            text += item['Text'] + '\n'
+    
+    return text
 
 
 # Main function to run the Streamlit app
@@ -332,7 +347,11 @@ def main():
         st.image(denoised_image, caption=f"Denoised Image ({navbar})", use_column_width=True, clamp=True, channels="GRAY")
 
         if st.button(f"Extract Text ({navbar})"):
-            extracted_text = extract_text_from_image(denoised_image)
+            denoised_image=Image.fromarray(denoised_image)
+                with io.BytesIO() as buffer:
+                   denoised_image.save(buffer, format='PNG')  # Save as PNG or JPG
+                   image_bytes = buffer.getvalue()
+                extracted_text = extract_text(image_bytes)
             st.text_area("Extracted Text", extracted_text, height=200)
 
 
