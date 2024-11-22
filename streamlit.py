@@ -13,7 +13,7 @@ aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 aws_region = os.getenv('AWS_DEFAULT_REGION')
 
 
-import streamlit as st
+"""import streamlit as st
 from PIL import Image
 import pytesseract
 import numpy as np
@@ -209,14 +209,14 @@ def main():
                 st.write(extracted_text)
 # Run the app
 if __name__ == '__main__':
-    main()
+    main()"""
 
 
 
 
 
 #navbar
-"""import streamlit as st
+import streamlit as st
 from PIL import Image
 import pytesseract
 import numpy as np
@@ -337,7 +337,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()"""
+    main()
 
 
 
