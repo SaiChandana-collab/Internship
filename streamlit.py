@@ -218,6 +218,8 @@ import pytesseract
 import numpy as np
 from sklearn.decomposition import PCA
 import cv2
+import boto3
+import io
 
 
 background_color = "#F0F2F5"
