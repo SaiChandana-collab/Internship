@@ -229,6 +229,32 @@ import io
 
 
 
+def apply_non_local_means(image, h, hForColorComponents, templateWindowSize, searchWindowSize):
+    return cv2.fastNlMeansDenoisingColored(image, None, h, hForColorComponents, templateWindowSize, searchWindowSize)
+
+def apply_median_blur(image, ksize):
+    return cv2.medianBlur(image, ksize)
+
+def apply_histogram_equalization(image, clipLimit, tileGridSize):
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    lab_planes = list(cv2.split(lab))
+    clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
+    lab_planes[0] = clahe.apply(lab_planes[0])
+    lab = cv2.merge(lab_planes)
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+def apply_bilateral_filter(image, d, sigmaColor, sigmaSpace):
+    return cv2.bilateralFilter(image, d, sigmaColor, sigmaSpace)
+
+def apply_fuzzy_logic(image, clipLimit, tileGridSize):
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    lab_planes = list(cv2.split(lab))
+    clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
+    lab_planes[0] = clahe.apply(lab_planes[0])
+    lab = cv2.merge(lab_planes)
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+
 # Define denoising functions
 def denoise_approach_3(image):
     image = cv2.fastNlMeansDenoising(image, None, h=10, templateWindowSize=7, searchWindowSize=41)
