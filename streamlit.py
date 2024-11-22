@@ -348,10 +348,10 @@ def main():
 
         if st.button(f"Extract Text ({navbar})"):
             denoised_image=Image.fromarray(denoised_image)
-                with io.BytesIO() as buffer:
-                   denoised_image.save(buffer, format='PNG')  # Save as PNG or JPG
-                   image_bytes = buffer.getvalue()
-                extracted_text = extract_text(image_bytes)
+            with io.BytesIO() as buffer:
+               denoised_image.save(buffer, format='PNG')  # Save as PNG or JPG
+               image_bytes = buffer.getvalue()
+            extracted_text = extract_text(image_bytes)
             st.text_area("Extracted Text", extracted_text, height=200)
 
 
