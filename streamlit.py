@@ -228,196 +228,6 @@ import io
 
 
 
-def denoise_approach_5(image):
-    def load_image(image):
-        img = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        return img
-
-    def detect_text(image):
-        orig = image.copy()
-        (H, W) = image.shape[:2]
-
-        (newH, newW) = (H, W)
-        if newH % 32 != 0:
-            newH = (newH // 32 + 1) * 32
-        if newW % 32 != 0:
-            newW = (newW // 32 + 1) * 32
-        resized_image = cv2.resize(image, (newW, newH))
-
-        net = cv2.dnn.readNet(model_path)
-
-        blob = cv2.dnn.blobFromImage(resized_image, 1.0, (newW, newH), (123.68, 116.78, 103.94), swapRB=True, crop=False)
-        net.setInput(blob)
-
-        layer_names = ["feature_fusion/Conv_7/Sigmoid", "feature_fusion/concat_3"]
-        (scores, geometry) = net.forward(layer_names)
-
-        (rects, confidences) = decode_predictions(scores, geometry)
-        boxes = non_max_suppression(np.array(rects), probs=confidences)
-
-        text_regions = [(x, y, x + w, y + h) for (x, y, w, h) in boxes]
-        return text_regions
-
-    def decode_predictions(scores, geometry):
-        (num_rows, num_cols) = scores.shape[2:4]
-        rects = []
-        confidences = []
-
-        for y in range(0, num_rows):
-            scores_data = scores[0, 0, y]
-            x_data_0 = geometry[0, 0, y]
-            x_data_1 = geometry[0, 1, y]
-            x_data_2 = geometry[0, 2, y]
-            x_data_3 = geometry[0, 3, y]
-            angles_data = geometry[0, 4, y]
-
-            for x in range(0, num_cols):
-                if scores_data[x] < 0.5:
-                    continue
-
-                (offset_x, offset_y) = (x * 4.0, y * 4.0)
-                angle = angles_data[x]
-                cos = np.cos(angle)
-                sin = np.sin(angle)
-                h = x_data_0[x] + x_data_2[x]
-                w = x_data_1[x] + x_data_3[x]
-                end_x = int(offset_x + (cos * x_data_1[x]) + (sin * x_data_2[x]))
-                end_y = int(offset_y - (sin * x_data_1[x]) + (cos * x_data_2[x]))
-                start_x = int(end_x - w)
-                start_y = int(end_y - h)
-
-                rects.append((start_x, start_y, w, h))
-                confidences.append(scores_data[x])
-
-        return (rects, confidences)
-    def non_max_suppression(boxes, probs=None, overlapThresh=0.3):
-        if len(boxes) == 0:
-            return []
-
-        if boxes.dtype.kind == "i":
-            boxes = boxes.astype("float")
-
-        pick = []
-        x1 = boxes[:, 0]
-        y1 = boxes[:, 1]
-        x2 = boxes[:, 2]
-        y2 = boxes[:, 3]
-
-        area = (x2 - x1 + 1) * (y2 - y1 + 1)
-        idxs = y2
-
-        if probs is not None:
-            idxs = probs
-
-        idxs = np.argsort(idxs)
-
-        while len(idxs) > 0:
-            last = len(idxs) - 1
-            i = idxs[last]
-            pick.append(i)
-
-            xx1 = np.maximum(x1[i], x1[idxs[:last]])
-            yy1 = np.maximum(y1[i], y1[idxs[:last]])
-            xx2 = np.minimum(x2[i], x2[idxs[:last]])
-            yy2 = np.minimum(y2[i], y2[idxs[:last]])
-
-            w = np.maximum(0, xx2 - xx1 + 1)
-            h = np.maximum(0, yy2 - yy1 + 1)
-
-            overlap = (w * h) / area[idxs[:last]]
-
-            idxs = np.delete(idxs, np.concatenate(([last], np.where(overlap > overlapThresh)[0])))
-
-        return boxes[pick].astype("int")
-    def denoise_ROIs(image, regions):
-        denoised_image = image.copy()
-        for region in regions:
-            x1, y1, x2, y2 = region
-            if x1 < 0:
-                x1 = 0
-            if y1 < 0:
-                y1 = 0
-            if x2 > image.shape[1]:
-                x2 = image.shape[1]
-            if y2 > image.shape[0]:
-                y2 = image.shape[0]
-            roi = denoised_image[y1:y2, x1:x2]
-            if roi.size != 0:
-                denoised_roi = cv2.fastNlMeansDenoisingColored(roi, None, 10, 10, 7, 21)
-                denoised_image[y1:y2, x1:x2] = denoised_roi
-        return denoised_image
-
-    image = load_image(image)
-    text_regions = detect_text(image)
-    denoised_ROIs_image = denoise_ROIs(image, text_regions)
-    return denoised_ROIs_image
-   
-
-
-def denoise_approach_6(image):
-    sigma_est = np.mean(estimate_sigma(image, multichannel=False))
-    patch_kw = dict(patch_size=3,      # 5x5 patches
-                    patch_distance=5,  # 13x13 search area
-                    multichannel=False)
-    denoised = denoise_nl_means(image, h=1.15 * sigma_est, fast_mode=True, **patch_kw)
-    return img_as_ubyte(denoised)
-
-def denoise_approach_4(image):
-
-  def kfill(image, k):
-        h, w = image.shape
-        output_image = image.copy()
-
-        neighborhood_size = k * k
-        half_k = k // 2
-
-        # Pad the image to handle edges
-        padded_image = np.pad(image, pad_width=half_k, mode='constant', constant_values=255)
-
-        for i in range(half_k, h + half_k):
-            for j in range(half_k, w + half_k):
-                neighborhood = padded_image[i-half_k:i+half_k+1, j-half_k:j+half_k+1]
-                core = neighborhood[1:1+k-2, 1:1+k-2]
-
-                n = np.sum(neighborhood < 127)
-                c = 1 if np.any(core < 127) else 0
-
-                if np.all(core >= 127) and n > 3*k-4 and c == 1:
-                    output_image[i-half_k, j-half_k] = 0
-                elif np.all(core < 127) and n > 3*k-4 and c == 1:
-                    output_image[i-half_k, j-half_k] = 255
-
-        return output_image
-
-  k = 11  # Window size for kFill algorithm
-  kfill_result = kfill(image, k)
-  return kfill_result
-    
-def apply_non_local_means(image, h, hForColorComponents, templateWindowSize, searchWindowSize):
-    return cv2.fastNlMeansDenoisingColored(image, None, h, hForColorComponents, templateWindowSize, searchWindowSize)
-
-def apply_median_blur(image, ksize):
-    return cv2.medianBlur(image, ksize)
-
-def apply_histogram_equalization(image, clipLimit, tileGridSize):
-    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    lab_planes = list(cv2.split(lab))
-    clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
-    lab_planes[0] = clahe.apply(lab_planes[0])
-    lab = cv2.merge(lab_planes)
-    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
-def apply_bilateral_filter(image, d, sigmaColor, sigmaSpace):
-    return cv2.bilateralFilter(image, d, sigmaColor, sigmaSpace)
-
-def apply_fuzzy_logic(image, clipLimit, tileGridSize):
-    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    lab_planes = list(cv2.split(lab))
-    clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
-    lab_planes[0] = clahe.apply(lab_planes[0])
-    lab = cv2.merge(lab_planes)
-    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
 
 # Define denoising functions
 def denoise_approach_3(image):
@@ -453,7 +263,7 @@ def denoise_approach_1(image):
     if len(org_image.shape) == 3 and org_image.shape[2] == 3:
         org_image = cv2.cvtColor(org_image, cv2.COLOR_RGB2GRAY)
     image = cv2.fastNlMeansDenoising(org_image, None, h=10, templateWindowSize=15, searchWindowSize=71)
-    denoised_image = anisotropic_diffusion(image, iterations=30, kappa=2, gamma=0.2, option=1)
+    denoised_image = anisotropic_diffusion(image, iterations=30, kappa=20, gamma=0.2, option=1)
     denoised_image = cv2.adaptiveThreshold(denoised_image.astype(np.uint8), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 29)
     return denoised_image
 
@@ -503,8 +313,6 @@ def extract_text(image_bytes):
     
     return text
 
-    
-
 
 # Main function to run the Streamlit app
 def main():
@@ -514,7 +322,7 @@ def main():
     # Navbar for selecting denoising method
     navbar = st.sidebar.radio(
         "Navigation",
-        ("Anisotropic Diffusion", "PCA Denoising", "Bilateral Filtering","KFill","ETRDA","Non Local Means","Histogram Equalization","Bilateral Filter","Fuzzy Logic")
+        ("Anisotropic Diffusion", "PCA Denoising", "Bilateral Filtering")
     )
 
     # Upload image
@@ -524,38 +332,17 @@ def main():
         image = Image.open(uploaded_image)
         image_np = np.array(image)
         st.image(image, caption='Uploaded Image', use_column_width=True)
-        if st.button(f"Extract Text from original Image"):
-            org_image=Image.fromarray(image_np)
-            with io.BytesIO() as buffer:
-               org_image.save(buffer, format='PNG')  # Save as PNG or JPG
-               image_bytes = buffer.getvalue()
-            extracted_text = extract_text(image_bytes)
-            st.text_area("Extracted Text", extracted_text, height=200)
-    if navbar == "Anisotropic Diffusion":
-        st.header("Anisotropic Diffusion")
-        denoised_image = denoise_approach_1(image_np)
-    elif navbar == "PCA Denoising":
-        st.header("PCA Denoising")
-        denoised_image = denoise_approach_2(image_np)
-    elif navbar == "Bilateral Filtering":
-        st.header("Bilateral Filtering")
-        denoised_image = denoise_approach_3(image_np)
-    elif navbar == "KFill":
-        st.header("KFill")
-        denoised_image = denoise_approach_4(image_np)
-    elif navbar == "ETRDA":
-        st.header("ETRDA")
-        denoised_image = denoise_approach_5(image_np)
-    elif navbar == "Non Local Means":
-        st.header("Non Local Means")
-        denoised_image = denoise_approach_6(image_np)
-    elif navbar == "Histogram Equalization":
-        st.header("Histogram Equalization")
-        denoised_image = denoise_approach_7(image_np)
-    elif navbar == "Fuzzy Logic":
-        st.header("Fuzzy Logic")
-        denoised_image = denoise_approach_9(image_np)
-    
+
+        # Display selected denoising method
+        if navbar == "Anisotropic Diffusion":
+            st.header("Anisotropic Diffusion")
+            denoised_image = denoise_approach_1(image_np)
+        elif navbar == "PCA Denoising":
+            st.header("PCA Denoising")
+            denoised_image = denoise_approach_2(image_np)
+        elif navbar == "Bilateral Filtering":
+            st.header("Bilateral Filtering")
+            denoised_image = denoise_approach_3(image_np)
 
         st.image(denoised_image, caption=f"Denoised Image ({navbar})", use_column_width=True, clamp=True, channels="GRAY")
 
@@ -570,6 +357,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
