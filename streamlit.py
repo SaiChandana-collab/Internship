@@ -160,7 +160,7 @@ def main():
     # Navbar for selecting denoising method
     navbar = st.sidebar.radio(
         "Navigation",
-        ("Anisotropic Diffusion", "PCA Denoising", "Bilateral Filtering")
+        ("Anisotropic Diffusion", "PCA Denoising", "Bilateral Filtering","KFill Denoising")
     )
 
     # Upload image
