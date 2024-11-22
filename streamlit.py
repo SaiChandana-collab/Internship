@@ -101,7 +101,7 @@ def denoise_approach_1(image):
     if len(org_image.shape) == 3 and org_image.shape[2] == 3:
         org_image = cv2.cvtColor(org_image, cv2.COLOR_RGB2GRAY)
     image = cv2.fastNlMeansDenoising(org_image, None, h=10, templateWindowSize=15, searchWindowSize=71)
-    denoised_image = anisotropic_diffusion(image, iterations=30, kappa=20, gamma=0.2, option=1)
+    denoised_image = anisotropic_diffusion(image, iterations=30, kappa=5, gamma=0.2, option=1)
     denoised_image = cv2.adaptiveThreshold(denoised_image.astype(np.uint8), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 29)
     return denoised_image
 
@@ -170,6 +170,13 @@ def main():
         image = Image.open(uploaded_image)
         image_np = np.array(image)
         st.image(image, caption='Uploaded Image', use_column_width=True)
+        if st.button(f"Extract Text from Original"):
+            org_image=Image.fromarray(image_np)
+            with io.BytesIO() as buffer:
+               org_image.save(buffer, format='PNG')  # Save as PNG or JPG
+               image_bytes = buffer.getvalue()
+            extracted_text = extract_text(image_bytes)
+            st.text_area("Extracted Text", extracted_text, height=200)
 
         # Display selected denoising method
         if navbar == "Anisotropic Diffusion":
@@ -181,10 +188,6 @@ def main():
         elif navbar == "Bilateral Filtering":
             st.header("Bilateral Filtering")
             denoised_image = denoise_approach_3(image_np)
-        elif navbar == "KFill":
-            st.header("KFill Denoising")
-            denoised_image = denoise_approach_4(image_np)
-            denoised_image = denoised_image.astype(np.uint8)
 
         st.image(denoised_image, caption=f"Denoised Image ({navbar})", use_column_width=True, clamp=True)
 
