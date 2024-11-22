@@ -23,14 +23,7 @@ import boto3
 import io
 
 
-background_color = "#F0F2F5"
-st.markdown(f"""
-<style>
-    body {{
-        background-color: {background_color};
-    }}
-</style>
-""", unsafe_allow_html=True)
+
 
 def extract_text(image_bytes):
     # Create a Textract client
