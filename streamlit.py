@@ -333,7 +333,7 @@ def main():
         image_np = np.array(image)
         st.image(image, caption='Uploaded Image', use_column_width=True)
         if st.button(f"Extract Text from original Image"):
-            org_image=Image.fromarray(image)
+            org_image=Image.fromarray(image_np)
             with io.BytesIO() as buffer:
                org_image.save(buffer, format='PNG')  # Save as PNG or JPG
                image_bytes = buffer.getvalue()
