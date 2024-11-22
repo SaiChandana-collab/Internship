@@ -183,6 +183,7 @@ def main():
             denoised_image = denoise_approach_3(image_np)
         elif navbar == "KFill":
             st.header("KFill Denoising")
+            denoised_image = denoise_approach_4(image_np)
             denoised_image = denoised_image.astype(np.uint8)
 
         st.image(denoised_image, caption=f"Denoised Image ({navbar})", use_column_width=True, clamp=True, channels="GRAY")
