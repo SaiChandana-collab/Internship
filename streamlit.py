@@ -263,7 +263,7 @@ def denoise_approach_1(image):
     if len(org_image.shape) == 3 and org_image.shape[2] == 3:
         org_image = cv2.cvtColor(org_image, cv2.COLOR_RGB2GRAY)
     image = cv2.fastNlMeansDenoising(org_image, None, h=10, templateWindowSize=15, searchWindowSize=71)
-    denoised_image = anisotropic_diffusion(image, iterations=30, kappa=5, gamma=0.2, option=1)
+    denoised_image = anisotropic_diffusion(image, iterations=30, kappa=2, gamma=0.2, option=1)
     denoised_image = cv2.adaptiveThreshold(denoised_image.astype(np.uint8), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 29)
     return denoised_image
 
